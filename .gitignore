@@ -1,6 +1,9 @@
 #Extra
 node_modules/
+data/*
 package-lock.json
+*.pem
+secrets/
 
 # Logs
 logs
