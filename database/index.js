@@ -3,7 +3,7 @@ const scripts = require('./scripts');
 
 async function run() {
   console.log('connected to cassandra');
-  // await scripts.initial_setup();
+  await scripts.initial_setup();
 };
 
 run();

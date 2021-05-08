@@ -4,6 +4,7 @@ data/*
 package-lock.json
 *.pem
 secrets/
+*.err.*
 
 # Logs
 logs

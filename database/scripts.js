@@ -1,4 +1,3 @@
-const { url } = require('node:inspector');
 const client = require('./client');
 
 const initial_setup = async () => {
@@ -7,23 +6,23 @@ const initial_setup = async () => {
   const scripts = [
     /* INITIAL IMPORTS  */
     'CREATE TABLE IF NOT EXISTS products.products_initial (id int, name varchar, slogan text, description text, category varchar, default_price int, PRIMARY KEY(id));',
-    'CREATE TABLE IF NOT EXISTS products.features_initial (id int, product_id int PRIMARY KEY, feature varchar, value varchar);',
-    'CREATE TABLE IF NOT EXISTS products.styles_initial (id int, productId int PRIMARY KEY, name varchar, sale_price varchar, original_price varchar, default_style boolean);',
-    'CREATE TABLE IF NOT EXISTS products.photos_initial (id int, styleId int PRIMARY KEY, url varchar, thumbnail_url varchar);',
-    'CREATE TABLE IF NOT EXISTS products.skus_initial (id int, styleId int PRIMARY KEY, size varchar, quantity int);',
-    'CREATE TABLE IF NOT EXISTS products.related_initial (id int, current_product_item int PRIMARY KEY, related_product_item int);',
+    'CREATE TABLE IF NOT EXISTS products.features_initial (id int, product_id int, feature varchar, value varchar, PRIMARY KEY ((product_id), id));',
+    'CREATE TABLE IF NOT EXISTS products.styles_initial (id int, productId int, name varchar, sale_price varchar, original_price varchar, default_style boolean, PRIMARY KEY ((productid), id));',
+    'CREATE TABLE IF NOT EXISTS products.photos_initial (id int, styleId int, url varchar, thumbnail_url varchar, PRIMARY KEY ((styleid), id) );',
+    'CREATE TABLE IF NOT EXISTS products.skus_initial (id int, styleId int, size varchar, quantity int, PRIMARY KEY ((styleid), id) );',
+    'CREATE TABLE IF NOT EXISTS products.related_initial (id int, current_product_item int, related_product_item int, PRIMARY KEY ((current_product_item), id) );',
     'CREATE TYPE IF NOT EXISTS products.feature (feature varchar, value varchar);',
     'CREATE TYPE IF NOT EXISTS products.photo (url text, thumbnail_url text);',
     'CREATE TYPE IF NOT EXISTS products.sku (id int, size varchar, quantity int);',
     'CREATE TYPE IF NOT EXISTS products.style (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>);',
-    'CREATE TABLE IF NOT EXISTS products.styles (id int, productid int PRIMARY KEY, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>);',
-    'CREATE TABLE IF NOT EXISTS products.products (id int PRIMARY KEY, name varchar, slogan text, description text, category varchar, default_price int, features list<frozen<feature>>, related list<int>, styles list<frozen<style>>);'
+    'CREATE TABLE IF NOT EXISTS products.styles (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>, PRIMARY KEY ((productid), id));',
+    'CREATE TABLE IF NOT EXISTS products.products (product_id int, product_id_1 int, name varchar, slogan text, description text, category varchar, default_price int, features list<frozen<feature>>, related list<int>, styles list<frozen<style>>, PRIMARY KEY (product_id, product_id_1)) WITH CLUSTERING ORDER BY (product_id_1 ASC);'
   ];
 
   // await client.stream(`CREATE KEYSPACE IF NOT EXISTS products WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3};`, [], {}, () => {
-  await scripts.forEach(async script => {
-    await client.execute(script)
-  });
+  // await scripts.forEach(async script => {
+  //   await client.execute(script)
+  // });
   // });
 
   // await joinPhotosAndSKUsToStyles();
@@ -35,6 +34,8 @@ const joinPhotosAndSKUsToStyles = () => {
   const getAllStyles = 'select * from products.styles_initial;';
   const getPhotos = 'select * from products.photos_initial where styleid = ?;';
   const getSKUs = 'select * from products.skus_initial where styleid = ?;';
+
+  let counter = 0;
 
   client.eachRow(getAllStyles, [], { prepare: true, fetchSize: 1000, autoPage: true }, async function (n, styleRow) {
     try {
@@ -53,7 +54,7 @@ const joinPhotosAndSKUsToStyles = () => {
         skus
       ];
       await client.execute(insert, style, { prepare: true });
-      process.stdout.write('Row: ' + n + '\r');
+      process.stdout.write('Row: ' + ++counter + '\r');
     } catch (err) {
       console.log(err);
     }
@@ -74,9 +75,10 @@ const joinFeaturesAndRelatedAndStylesToProducts = () => {
       const related = (await client.execute(getRelated, [productRow.id], { prepare: true })).rows.map(row => row.related_product_item);
       const styles = (await client.execute(getStyles, [productRow.id], { prepare: true })).rows;
 
-      const insert = 'INSERT INTO products.products (id, name, slogan, description, category, default_price, features, related, styles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);'
+      const insert = 'INSERT INTO products.products (product_id, product_id_1, name, slogan, description, category, default_price, features, related, styles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'
 
       await client.execute(insert, [
+        productRow.id,
         productRow.id,
         productRow.name,
         productRow.slogan,
