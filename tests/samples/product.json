@@ -1,0 +1,26 @@
+{
+  "id": 17075,
+  "name": "Summer Shoes",
+  "slogan": "A risky call in the spring or fall",
+  "description": "Low-top panelled buffed leather and mesh sneakers. Sizing embroidered in black at round toe. Tonal lace-up closure. Pull-loop and rubberized style name at padded tongue. Padded collar. Pull-loop at heel collar. Logo embroidered in black at outer side. Tonal treaded rubber sole. Tonal stitching.",
+  "category": "Kicks",
+  "default_price": "59.00",
+  "features": [
+      {
+          "feature": "Sole",
+          "value": "Rubber"
+      },
+      {
+          "feature": "Material",
+          "value": "FullControlSkin"
+      },
+      {
+          "feature": "Mid-Sole",
+          "value": "ControlSupport Arch Bridge"
+      },
+      {
+          "feature": "Stitching",
+          "value": "Double Stitch"
+      }
+  ]
+}

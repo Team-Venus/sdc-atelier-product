@@ -1,6 +1,6 @@
 const client = require('./client');
 
-const initial_setup = async (joinTables = false) => {
+const initial_setup = async (runImports = false, joinTables = false) => {
   await client.connect();
 
   const scripts = [
@@ -18,16 +18,20 @@ const initial_setup = async (joinTables = false) => {
     'CREATE TYPE IF NOT EXISTS products.style (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>);',
     'CREATE TABLE IF NOT EXISTS products.styles (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>, PRIMARY KEY ((productid), id));',
     'CREATE TABLE IF NOT EXISTS products.products (product_id int, product_id_1 int, name varchar, slogan text, description text, category varchar, default_price int, features list<frozen<feature>>, related list<int>, styles list<frozen<style>>, PRIMARY KEY (product_id, product_id_1)) WITH CLUSTERING ORDER BY (product_id_1 ASC);',
+
+  ];
+
+  const imports = runImports ? [
     'COPY products.features_initial (id, product_id, feature, value) FROM \'../data/features.csv\' WITH header = false AND CHUNKSIZE = 5000 AND NUMPROCESSES=4;',
     'COPY products.photos_initial (id, styleid, url, thumbnail_url) FROM \'../data/photos.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
     'COPY products.products_initial (id, name, slogan, description, category, default_price) FROM \'../data/product.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
     'COPY products.related_initial (id, current_product_item,related_product_item) FROM \'../data/related.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
     'COPY products.skus_initial (id, styleid,size,quantity) FROM \'../data/skus.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
     'COPY products.styles_initial (id,productid, name, sale_price, original_price, default_style) FROM \'./data/styles.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;'
-  ];
+  ] : [];
 
   // Execute scripts in order
-  scripts.reduce((p, n, i) => p.then(_ => {
+  scripts.concat(imports).reduce((p, n, i) => p.then(_ => {
     if (n === scripts.length - 1 && joinTables) {
       return client.execute(n)
         .then(() => joinPhotosAndSKUsToStyles())
@@ -118,7 +122,12 @@ const getAllProducts = async (page = 1, count = 100) => {
   let query = 'select product_id, name, slogan, description, category, default_price from products.products;';
 
   let results = (await client.execute(query, [], { prepare: true, autoPage: true, fetchSize: count * page })).rows.slice(-count);
+  results = results.map(product => {
+    product['id'] = product['product_id'];
+    delete product['product_id'];
 
+    return product;
+  })
   return results;
 }
 
@@ -128,6 +137,8 @@ const getProduct = async (id) => {
   let query = 'select product_id, name, slogan, description, category, default_price, features from products.products where product_id = ?;';
 
   let product = (await client.execute(query, [id], { prepare: true })).rows[0];
+  product['id'] = product['product_id'];
+  delete product['product_id'];
 
   return product;
 }
