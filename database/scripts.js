@@ -1,10 +1,11 @@
 const client = require('./client');
 
-const initial_setup = async () => {
+const initial_setup = async (joinTables = false) => {
   await client.connect();
 
   const scripts = [
     /* INITIAL IMPORTS  */
+    'CREATE KEYSPACE IF NOT EXISTS products WITH REPLICATION = {\'class\':\'SimpleStrategy\', \'replication_factor\':3};',
     'CREATE TABLE IF NOT EXISTS products.products_initial (id int, name varchar, slogan text, description text, category varchar, default_price int, PRIMARY KEY(id));',
     'CREATE TABLE IF NOT EXISTS products.features_initial (id int, product_id int, feature varchar, value varchar, PRIMARY KEY ((product_id), id));',
     'CREATE TABLE IF NOT EXISTS products.styles_initial (id int, productId int, name varchar, sale_price varchar, original_price varchar, default_style boolean, PRIMARY KEY ((productid), id));',
@@ -16,21 +17,26 @@ const initial_setup = async () => {
     'CREATE TYPE IF NOT EXISTS products.sku (id int, size varchar, quantity int);',
     'CREATE TYPE IF NOT EXISTS products.style (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>);',
     'CREATE TABLE IF NOT EXISTS products.styles (id int, productid int, name varchar, sale_price varchar, original_price varchar, default_style boolean, photos list<frozen<photo>>, skus list<frozen<sku>>, PRIMARY KEY ((productid), id));',
-    'CREATE TABLE IF NOT EXISTS products.products (product_id int, product_id_1 int, name varchar, slogan text, description text, category varchar, default_price int, features list<frozen<feature>>, related list<int>, styles list<frozen<style>>, PRIMARY KEY (product_id, product_id_1)) WITH CLUSTERING ORDER BY (product_id_1 ASC);'
+    'CREATE TABLE IF NOT EXISTS products.products (product_id int, product_id_1 int, name varchar, slogan text, description text, category varchar, default_price int, features list<frozen<feature>>, related list<int>, styles list<frozen<style>>, PRIMARY KEY (product_id, product_id_1)) WITH CLUSTERING ORDER BY (product_id_1 ASC);',
+    'COPY products.features_initial (id, product_id, feature, value) FROM \'../data/features.csv\' WITH header = false AND CHUNKSIZE = 5000 AND NUMPROCESSES=4;',
+    'COPY products.photos_initial (id, styleid, url, thumbnail_url) FROM \'../data/photos.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
+    'COPY products.products_initial (id, name, slogan, description, category, default_price) FROM \'../data/product.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
+    'COPY products.related_initial (id, current_product_item,related_product_item) FROM \'../data/related.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
+    'COPY products.skus_initial (id, styleid,size,quantity) FROM \'../data/skus.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;',
+    'COPY products.styles_initial (id,productid, name, sale_price, original_price, default_style) FROM \'./data/styles.csv\' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;'
   ];
 
-  // await client.stream(`CREATE KEYSPACE IF NOT EXISTS products WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3};`, [], {}, () => {
-  // await scripts.forEach(async script => {
-  //   await client.execute(script)
-  // });
-  // });
-
-  // await joinPhotosAndSKUsToStyles();
-  // await joinFeaturesAndRelatedAndStylesToProducts();
-  // console.log('finished joining photos and skus');
+  // Execute scripts in order
+  scripts.reduce((p, n, i) => p.then(_ => {
+    if (n === scripts.length - 1 && joinTables) {
+      return client.execute(n)
+        .then(() => joinPhotosAndSKUsToStyles())
+        .then(() => joinFeaturesAndRelatedAndStylesToProducts());
+    } else return client.execute(n);
+  }), Promise.resolve());
 };
 
-const joinPhotosAndSKUsToStyles = () => {
+const joinPhotosAndSKUsToStyles = () => new Promise(resolve => {
   const getAllStyles = 'select * from products.styles_initial;';
   const getPhotos = 'select * from products.photos_initial where styleid = ?;';
   const getSKUs = 'select * from products.skus_initial where styleid = ?;';
@@ -58,10 +64,13 @@ const joinPhotosAndSKUsToStyles = () => {
     } catch (err) {
       console.log(err);
     }
+  }, () => {
+    console.log('finished joining photos and skus to styles');
+    resolve();
   });
-}
+});
 
-const joinFeaturesAndRelatedAndStylesToProducts = () => {
+const joinFeaturesAndRelatedAndStylesToProducts = () => new Promise(resolve => {
   const getAllProducs = 'select * from products.products_initial;';
   const getFeatures = 'select * from products.features_initial where product_id = ?;';
   const getRelated = 'select * from products.related_initial where current_product_item = ?;';
@@ -89,22 +98,24 @@ const joinFeaturesAndRelatedAndStylesToProducts = () => {
         related,
         styles
       ], { prepare: true });
-      process.stdout.write('Row: ' + ++counter + '\r');
 
+      process.stdout.write('Row: ' + ++counter + '\r');
     } catch (err) {
       console.log(err);
     }
+  }, () => {
+    process.stdout.write('Done');
+    resolve();
   });
 
-  process.stdout.write('Done');
-}
+});
 
 
 
 const getAllProducts = async (page = 1, count = 100) => {
   await client.connect();
 
-  let query = 'select id, name, slogan, description, category, default_price from products.products;';
+  let query = 'select product_id, name, slogan, description, category, default_price from products.products;';
 
   let results = (await client.execute(query, [], { prepare: true, autoPage: true, fetchSize: count * page })).rows.slice(-count);
 
@@ -114,7 +125,7 @@ const getAllProducts = async (page = 1, count = 100) => {
 const getProduct = async (id) => {
   await client.connect();
 
-  let query = 'select id, name, slogan, description, category, default_price, features from products.products where id = ?;';
+  let query = 'select product_id, name, slogan, description, category, default_price, features from products.products where product_id = ?;';
 
   let product = (await client.execute(query, [id], { prepare: true })).rows[0];
 
@@ -124,7 +135,7 @@ const getProduct = async (id) => {
 const getStyle = async (id) => {
   await client.connect();
 
-  let query = 'select styles from products.products where id = ?;'
+  let query = 'select styles from products.products where product_id = ?;'
   let styles = (await client.execute(query, [id], { prepare: true })).rows[0].styles;
 
   return {
@@ -149,7 +160,7 @@ const getStyle = async (id) => {
 const getRelated = async (id) => {
   await client.connect();
 
-  let query = 'select related from products.products where id = ?;'
+  let query = 'select related from products.products where product_id = ?;'
   let related = (await client.execute(query, [id], { prepare: true })).rows.map(row => row.related)[0];
   return related;
 }
