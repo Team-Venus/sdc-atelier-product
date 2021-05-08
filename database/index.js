@@ -6,8 +6,6 @@ async function run() {
   await scripts.initial_setup();
 };
 
-run();
-
 module.exports = {
   run,
   getAllProducts: scripts.getAllProducts,
