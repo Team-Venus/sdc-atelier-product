@@ -2,11 +2,10 @@ const express = require('express');
 const db = require('../database');
 const morgan = require('morgan');
 
-
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

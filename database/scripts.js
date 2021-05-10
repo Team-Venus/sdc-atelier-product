@@ -1,7 +1,7 @@
 const client = require('./client');
+client.connect(() => console.log('connected to cassandra'));
 
 const initial_setup = async (runImports = false, joinTables = false) => {
-  await client.connect();
 
   const scripts = [
     /* INITIAL IMPORTS  */
