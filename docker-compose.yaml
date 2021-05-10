@@ -1,0 +1,16 @@
+version: '3'
+services:
+  cass:
+    image: bitnami/cassandra:latest
+    volumes:
+      - cassandra:/bitnami
+
+  api:
+    build: .
+    depends_on:
+      - cass
+    ports:
+      - '5000:5000'
+
+volumes:
+  cassandra:
