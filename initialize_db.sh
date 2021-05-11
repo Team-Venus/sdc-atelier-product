@@ -16,4 +16,4 @@ cqlsh $1 -u $2 -p $3 << EOF
   COPY products.styles_initial (id,productid, name, sale_price, original_price, default_style) FROM './data/styles.csv' WITH header = true AND CHUNKSIZE = 6000 AND NUMPROCESSES=4;
 EOF
 
-node database/initialize true
+node database/initialize.js true
