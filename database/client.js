@@ -12,7 +12,7 @@ credentials: {
 },*/
 
 const client = new cassandra.Client({
-  contactPoints: ['localhost'],
+  contactPoints: [process.env.DB_HOST],
   localDataCenter: 'datacenter1',
   pooling: {
     coreConnectionsPerHost: {
@@ -20,6 +20,7 @@ const client = new cassandra.Client({
       [distance.remote]: 4
     }
   },
+  credentials: { username: process.env.DB_USER, password: process.env.DB_PASS }
 });
 
 module.exports = client;
