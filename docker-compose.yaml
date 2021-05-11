@@ -1,16 +1,29 @@
 version: '3'
+
+networks:
+  app-net:
+    driver: bridge
+
 services:
   cass:
     image: bitnami/cassandra:latest
-    volumes:
+    volumes:–
       - cassandra:/bitnami
+    ports:
+      - "9042:9042"
+    networks:
+      - app-net
 
   api:
     build: .
     depends_on:
       - cass
     ports:
-      - '5000:5000'
+      - "5000:5000"
+    networks:
+      - app-net
+    links:
+      - cass
 
 volumes:
   cassandra:
