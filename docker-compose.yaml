@@ -7,7 +7,7 @@ networks:
 services:
   cass:
     image: bitnami/cassandra:latest
-    volumes:–
+    volumes:
       - cassandra:/bitnami
     ports:
       - "9042:9042"
@@ -15,7 +15,12 @@ services:
       - app-net
 
   api:
-    build: .
+    build:
+      context: .
+      args:
+        DB_HOST: cass
+        DB_USER: ${DB_USER}
+        DB_PASS: ${DB_PASS}
     depends_on:
       - cass
     ports:
