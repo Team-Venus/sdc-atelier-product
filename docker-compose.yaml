@@ -6,9 +6,9 @@ networks:
 
 services:
   cass:
-    image: bitnami/cassandra:latest
+    image: cassandra:latest
     volumes:
-      - cassandra:/bitnami
+      - cassandra:/data/
     ports:
       - "9042:9042"
     networks:
@@ -19,8 +19,8 @@ services:
       context: .
       args:
         DB_HOST: cass
-        DB_USER: ${DB_USER}
-        DB_PASS: ${DB_PASS}
+        DB_USER: cassandra
+        DB_PASS: cassandra
     depends_on:
       - cass
     ports:
