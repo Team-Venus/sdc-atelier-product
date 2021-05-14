@@ -130,6 +130,10 @@ const getProduct = async (id) => {
   product['id'] = product['product_id'];
   delete product['product_id'];
 
+  products['features'].forEach(feature => {
+    if (feature['value'] === 'null') feature['value'] = null;
+  })
+
   return product;
 }
 
@@ -149,7 +153,7 @@ const getStyle = async (id) => {
         style_id: style.id,
         name: style.name,
         original_price: style.original_price,
-        sale_price: style.sale_price,
+        sale_price: style.sale_price === 'null' ? null : style.sale_price,
         "default?": style.default_style,
         photos: style.photos,
         skus

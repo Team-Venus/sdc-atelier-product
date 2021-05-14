@@ -1,3 +1,4 @@
 let joinTables = Boolean(process.argv[2]);
 
-await require('./index').run(joinTables);
+// require('./index').run(true);
+require('./scripts.js').initial_setup(true);
