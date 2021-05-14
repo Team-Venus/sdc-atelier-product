@@ -130,7 +130,7 @@ const getProduct = async (id) => {
   product['id'] = product['product_id'];
   delete product['product_id'];
 
-  products['features'].forEach(feature => {
+  product['features'].forEach(feature => {
     if (feature['value'] === 'null') feature['value'] = null;
   })
 
